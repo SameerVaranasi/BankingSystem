@@ -1,133 +1,195 @@
-# 🏦 Banking System (Java Console Application)
+# 🏦 Banking System
 
-A simple **console-based Banking System** developed in **Java** to demonstrate basic banking operations and core Object-Oriented Programming (OOP) concepts. This project is beginner-friendly and is ideal for learning Java fundamentals such as classes, methods, loops, conditional statements, and user input handling.
-
----
-
-## 📌 Features
-
-* 🏦 Create a bank account
-* 💰 Deposit money
-* 💸 Withdraw money
-* 📊 Balance enquiry
-* 📝 Transaction history with date and time
-* ❌ Prevents invalid and insufficient balance withdrawals
-* 🔄 Menu-driven console interface
+A **Java-based Banking System** that provides both a **Console Interface** and a **Graphical User Interface (GUI)** for performing basic banking operations. This project demonstrates core Java programming concepts along with Object-Oriented Programming (OOP) principles and Java Swing for GUI development.
 
 ---
 
-## 🛠️ Technologies Used
+# ✨ Features
+
+### 💻 Console Version
+
+* Create a bank account
+* Deposit money
+* Withdraw money
+* Balance enquiry
+* Transaction history
+* Menu-driven interface
+* Input validation
+* Date & time for every transaction
+
+### 🖥️ GUI Version
+
+* User-friendly graphical interface
+* Create bank account
+* Deposit and withdraw funds
+* View current balance
+* Transaction history display
+* Error handling with dialog boxes
+* Simple and intuitive navigation
+
+---
+
+# 🛠️ Technologies Used
 
 * Java
+* Java Swing (GUI)
 * Object-Oriented Programming (OOP)
 * Scanner Class
-* ArrayList (for transaction history)
-* LocalDateTime (for timestamps)
+* ArrayList
+* LocalDateTime API
 
 ---
 
-## 📂 Project Structure
+# 📂 Project Structure
 
-```
+```text
 BankingSystem/
-│── BankingSystem.java
-│── BankAccount.java
-│── README.md
+│── src/
+│   ├── BankAccount.java
+│   ├── BankingSystem.java          # Console Version
+│   ├── BankingGUI.java             # GUI Version
+│   └── ...
+│
+├── README.md
+└── LICENSE
 ```
 
 ---
 
-## 🚀 How to Run
+# 🚀 Getting Started
 
-1. Clone the repository:
+## Prerequisites
 
-   ```bash
-   git clone https://github.com/your-username/BankingSystem.git
-   ```
-
-2. Open the project in your preferred Java IDE (VS Code, IntelliJ IDEA, Eclipse, etc.).
-
-3. Compile the Java files:
-
-   ```bash
-   javac *.java
-   ```
-
-4. Run the application:
-
-   ```bash
-   java BankingSystem
-   ```
+* Java JDK 17 or later (or your project version)
+* Any Java IDE (VS Code, IntelliJ IDEA, Eclipse, NetBeans)
 
 ---
 
-## 📖 How It Works
+## Clone the Repository
 
-1. Enter the account holder's name.
-2. Enter the account number.
-3. Enter the opening balance.
-4. Choose an option from the menu:
-
-   * Deposit
-   * Withdraw
-   * Balance Enquiry
-   * Transaction History
-   * Exit
-5. The program continues until **Exit** is selected.
-
----
-
-## 📸 Sample Output
-
-```
-========= Banking System =========
-
-1. Deposit
-2. Withdraw
-3. Balance Enquiry
-4. Transaction History
-5. Exit
-
-Enter your choice:
+```bash
+git clone https://github.com/your-username/BankingSystem.git
+cd BankingSystem
 ```
 
 ---
 
-## 📚 Concepts Covered
+## Run the Console Version
 
+Compile the project:
+
+```bash
+javac *.java
+```
+
+Run:
+
+```bash
+java BankingSystem
+```
+
+---
+
+## Run the GUI Version
+
+Compile:
+
+```bash
+javac *.java
+```
+
+Run:
+
+```bash
+java BankingGUI
+```
+
+---
+
+# 📋 Banking Operations
+
+* ✅ Create Account
+* 💰 Deposit Money
+* 💸 Withdraw Money
+* 📊 Balance Enquiry
+* 📝 View Transaction History
+* ❌ Prevent Invalid Transactions
+* 🕒 Record Date & Time for Transactions
+
+---
+
+# 📸 Screenshots
+
+Add screenshots of your application here.
+
+```
+screenshots/
+│── console-home.png
+│── gui-home.png
+│── transaction-history.png
+```
+
+---
+
+# 📚 Concepts Demonstrated
+
+* Object-Oriented Programming (OOP)
 * Classes & Objects
 * Constructors
-* Methods
 * Encapsulation
-* Conditional Statements
+* Methods
 * Loops
-* User Input (Scanner)
-* ArrayList
+* Conditional Statements
+* Exception Handling
+* Collections (ArrayList)
+* Java Swing
+* Event Handling
+* Layout Managers
 * Date & Time API
-* Exception Handling (Basic)
 
 ---
 
-## 🎯 Future Improvements
+# 🔮 Future Enhancements
 
-* GUI using Java Swing or JavaFX
-* Database integration (MySQL)
-* User authentication (Login System)
-* Multiple bank accounts
-* Money transfer between accounts
-* Interest calculation
-* File-based data storage
-* Account deletion and update
+* MySQL Database Integration
+* Login & Registration System
+* Multiple Account Management
+* Money Transfer Between Accounts
+* File-Based Data Storage
+* Interest Calculation
+* Admin Dashboard
+* Export Transaction History to PDF/CSV
+* Dark Mode UI
 
 ---
 
-## 👨‍💻 Author
+# 👨‍💻 Author
 
 **Sameer Varanasi**
 
-* CSE Student, VIT-AP University
-* Interested in AI, Cloud Computing, and Java Development
+Computer Science Engineering Student
+VIT-AP University
+
+**Interests**
+
+* ☁️ Cloud Computing
+* 🤖 Artificial Intelligence
+* 💻 Java Development
 
 ---
 
+# 🤝 Contributing
 
+Contributions are welcome!
+
+1. Fork the repository.
+2. Create a new branch.
+3. Commit your changes.
+4. Push the branch.
+5. Open a Pull Request.
+
+---
+
+---
+
+⭐ If you found this project helpful, consider giving it a **star** on GitHub!
