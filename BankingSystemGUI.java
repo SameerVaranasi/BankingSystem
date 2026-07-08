@@ -7,8 +7,14 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.Insets;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -36,19 +42,23 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-class ASBankAccount {
+class ASBankAccount implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final String accountHolderName;
+    private final String phoneNumber;
+    private final String emailAddress;
     private final String accountNumber;
     private double balance;
     private final List<String> transactionHistory;
-    private final DateTimeFormatter formatter;
 
-    public ASBankAccount(String accountHolderName, String accountNumber, double openingBalance) {
+    public ASBankAccount(String accountHolderName, String phoneNumber, String emailAddress, String accountNumber, double openingBalance) {
         this.accountHolderName = accountHolderName;
+        this.phoneNumber = phoneNumber;
+        this.emailAddress = emailAddress;
         this.accountNumber = accountNumber;
         this.balance = openingBalance;
         this.transactionHistory = new ArrayList<>();
-        this.formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         addTransaction("Account created with opening balance: Rs. " + formatAmount(openingBalance));
     }
 
@@ -81,6 +91,14 @@ class ASBankAccount {
         return accountHolderName;
     }
 
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public String getEmailAddress() {
+        return emailAddress;
+    }
+
     public String getAccountNumber() {
         return accountNumber;
     }
@@ -98,12 +116,13 @@ class ASBankAccount {
     }
 
     private void addTransaction(String message) {
-        String dateTime = LocalDateTime.now().format(formatter);
+        String dateTime = LocalDateTime.now().format(FORMATTER);
         transactionHistory.add(dateTime + " - " + message + " | Balance: Rs. " + formatAmount(balance));
     }
 }
 
-class ASBankUser {
+class ASBankUser implements Serializable {
+    private static final long serialVersionUID = 1L;
     private static final int HASH_ITERATIONS = 65536;
     private static final int KEY_LENGTH = 256;
 
@@ -206,17 +225,22 @@ public class BankingSystemGUI extends JFrame {
     private static final String LOGIN_SCREEN = "login";
     private static final String CREATE_SCREEN = "create";
     private static final String DASHBOARD_SCREEN = "dashboard";
+    private static final long ACCOUNT_BLOCK_SIZE = 999_999_999L;
+    private static final String DATA_FILE_NAME = "as_bank_data.ser";
 
     private final Map<String, ASBankUser> users;
+    private long nextAccountSerial;
     private ASBankUser currentUser;
     private ASBankAccount currentAccount;
+    private boolean sidebarExpanded;
 
     private final CardLayout cardLayout;
     private final JPanel cards;
     private final JTextField loginIdField;
     private final JPasswordField loginPasswordField;
     private final JTextField createNameField;
-    private final JTextField createAccountNumberField;
+    private final JTextField createPhoneField;
+    private final JTextField createEmailField;
     private final JTextField createLoginIdField;
     private final JPasswordField createPasswordField;
     private final JPasswordField confirmPasswordField;
@@ -224,15 +248,25 @@ public class BankingSystemGUI extends JFrame {
     private final JLabel userInfoLabel;
     private final JLabel balanceLabel;
     private final JTextArea outputArea;
+    private JPanel sidebarPanel;
+    private JButton sidebarToggleButton;
+    private JButton depositButton;
+    private JButton withdrawButton;
+    private JButton balanceButton;
+    private JButton historyButton;
 
     public BankingSystemGUI() {
         users = new HashMap<>();
+        nextAccountSerial = 1;
+        loadBankData();
+        sidebarExpanded = true;
         cardLayout = new CardLayout();
         cards = new JPanel(cardLayout);
         loginIdField = new JTextField(18);
         loginPasswordField = new JPasswordField(18);
         createNameField = new JTextField(18);
-        createAccountNumberField = new JTextField(18);
+        createPhoneField = new JTextField(18);
+        createEmailField = new JTextField(18);
         createLoginIdField = new JTextField(18);
         createPasswordField = new JPasswordField(18);
         confirmPasswordField = new JPasswordField(18);
@@ -252,6 +286,41 @@ public class BankingSystemGUI extends JFrame {
         showWelcomeScreen();
     }
 
+    private void loadBankData() {
+        File dataFile = new File(DATA_FILE_NAME);
+        if (!dataFile.exists()) {
+            return;
+        }
+
+        try (ObjectInputStream input = new ObjectInputStream(new FileInputStream(dataFile))) {
+            BankStorage storage = (BankStorage) input.readObject();
+            users.clear();
+            users.putAll(storage.users);
+            nextAccountSerial = storage.nextAccountSerial;
+        } catch (IOException | ClassNotFoundException exception) {
+            showMessage("Saved bank data could not be loaded. A new bank file will be created when you save again.");
+        }
+    }
+
+    private void saveBankData() {
+        BankStorage storage = new BankStorage(users, nextAccountSerial);
+        try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(DATA_FILE_NAME))) {
+            output.writeObject(storage);
+        } catch (IOException exception) {
+            showMessage("Bank data could not be saved: " + exception.getMessage());
+        }
+    }
+
+    private static class BankStorage implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private final Map<String, ASBankUser> users;
+        private final long nextAccountSerial;
+
+        private BankStorage(Map<String, ASBankUser> users, long nextAccountSerial) {
+            this.users = new HashMap<>(users);
+            this.nextAccountSerial = nextAccountSerial;
+        }
+    }
     private void buildScreens() {
         cards.add(buildWelcomePanel(), WELCOME_SCREEN);
         cards.add(buildLoginPanel(), LOGIN_SCREEN);
@@ -331,18 +400,19 @@ public class BankingSystemGUI extends JFrame {
         form.add(createSectionTitle("Create AS Bank Account"), gbc);
 
         addFormRow(form, gbc, 1, "Full Name", createNameField);
-        addFormRow(form, gbc, 2, "Account Number", createAccountNumberField);
-        addFormRow(form, gbc, 3, "Unique Login ID", createLoginIdField);
-        addFormRow(form, gbc, 4, "Password", createPasswordField);
-        addFormRow(form, gbc, 5, "Confirm Password", confirmPasswordField);
-        addFormRow(form, gbc, 6, "Opening Balance", openingBalanceField);
+        addFormRow(form, gbc, 2, "Phone Number", createPhoneField);
+        addFormRow(form, gbc, 3, "Email Address", createEmailField);
+        addFormRow(form, gbc, 4, "Unique Login ID", createLoginIdField);
+        addFormRow(form, gbc, 5, "Password", createPasswordField);
+        addFormRow(form, gbc, 6, "Confirm Password", confirmPasswordField);
+        addFormRow(form, gbc, 7, "Opening Balance", openingBalanceField);
 
         JButton createButton = createPrimaryButton("Create Account");
         JButton backButton = createSecondaryButton("Back");
         createButton.addActionListener(event -> createAccount());
         backButton.addActionListener(event -> showWelcomeScreen());
 
-        gbc.gridy = 7;
+        gbc.gridy = 8;
         gbc.gridx = 0;
         gbc.gridwidth = 1;
         form.add(backButton, gbc);
@@ -379,49 +449,61 @@ public class BankingSystemGUI extends JFrame {
         accountPanel.add(userInfoLabel, BorderLayout.NORTH);
         accountPanel.add(balanceLabel, BorderLayout.CENTER);
 
-        JPanel actionPanel = new JPanel(new GridLayout(2, 2, 14, 14));
-        actionPanel.setOpaque(false);
-        JButton depositButton = createPrimaryButton("Deposit");
-        JButton withdrawButton = createPrimaryButton("Withdraw");
-        JButton balanceButton = createSecondaryButton("Balance Enquiry");
-        JButton historyButton = createSecondaryButton("Transaction History");
+        sidebarPanel = new JPanel(new GridBagLayout());
+        sidebarPanel.setBackground(new Color(35, 48, 64));
+        sidebarPanel.setBorder(BorderFactory.createEmptyBorder(12, 10, 12, 10));
+        sidebarToggleButton = createSidebarButton("Hide Menu");
+        depositButton = createSidebarButton("Deposit");
+        withdrawButton = createSidebarButton("Withdraw");
+        balanceButton = createSidebarButton("Balance Enquiry");
+        historyButton = createSidebarButton("Transaction History");
+        sidebarToggleButton.addActionListener(event -> toggleSidebar());
         depositButton.addActionListener(event -> deposit());
         withdrawButton.addActionListener(event -> withdraw());
         balanceButton.addActionListener(event -> showBalance());
         historyButton.addActionListener(event -> showHistory());
-        actionPanel.add(depositButton);
-        actionPanel.add(withdrawButton);
-        actionPanel.add(balanceButton);
-        actionPanel.add(historyButton);
+        buildSidebar();
 
         JPanel center = new JPanel(new BorderLayout(16, 16));
         center.setOpaque(false);
         center.add(accountPanel, BorderLayout.NORTH);
-        center.add(actionPanel, BorderLayout.CENTER);
 
         outputArea.setEditable(false);
         outputArea.setFont(new Font("Consolas", Font.PLAIN, 13));
         outputArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         JScrollPane scrollPane = new JScrollPane(outputArea);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Display"));
-        scrollPane.setPreferredSize(new Dimension(760, 170));
+        center.add(scrollPane, BorderLayout.CENTER);
 
         panel.add(header, BorderLayout.NORTH);
+        panel.add(sidebarPanel, BorderLayout.WEST);
         panel.add(center, BorderLayout.CENTER);
-        panel.add(scrollPane, BorderLayout.SOUTH);
         return panel;
     }
 
     private void createAccount() {
         String name = createNameField.getText().trim();
-        String accountNumber = createAccountNumberField.getText().trim();
+        String phoneNumber = createPhoneField.getText().trim();
+        String emailAddress = createEmailField.getText().trim();
         String loginId = createLoginIdField.getText().trim();
         char[] password = createPasswordField.getPassword();
         char[] confirmPassword = confirmPasswordField.getPassword();
         String openingBalanceText = openingBalanceField.getText().trim();
 
-        if (name.isEmpty() || accountNumber.isEmpty() || loginId.isEmpty() || openingBalanceText.isEmpty()) {
+        if (name.isEmpty() || phoneNumber.isEmpty() || emailAddress.isEmpty() || loginId.isEmpty() || openingBalanceText.isEmpty()) {
             showMessage("Please fill all account details.");
+            clearPasswords(password, confirmPassword);
+            return;
+        }
+
+        if (!phoneNumber.matches("\\d{10}")) {
+            showMessage("Phone number must contain exactly 10 digits.");
+            clearPasswords(password, confirmPassword);
+            return;
+        }
+
+        if (!emailAddress.contains("@") || !emailAddress.contains(".")) {
+            showMessage("Please enter a valid email address.");
             clearPasswords(password, confirmPassword);
             return;
         }
@@ -451,12 +533,14 @@ public class BankingSystemGUI extends JFrame {
             return;
         }
 
-        ASBankAccount account = new ASBankAccount(name, accountNumber, openingBalance);
+        String accountNumber = generateAccountNumber();
+        ASBankAccount account = new ASBankAccount(name, phoneNumber, emailAddress, accountNumber, openingBalance);
         ASBankUser user = new ASBankUser(loginId, password, account);
         users.put(loginId, user);
+        saveBankData();
         clearPasswords(confirmPassword);
         clearCreateFields();
-        showMessage("Account created successfully. Please login now.");
+        showMessage("Account created successfully.\nYour account number is: " + accountNumber + "\nPlease login now.");
         showLoginScreen();
     }
 
@@ -485,6 +569,7 @@ public class BankingSystemGUI extends JFrame {
 
         if (!user.passwordMatches(password)) {
             user.recordFailedAttempt();
+            saveBankData();
             clearPasswords(password);
             if (user.isLocked()) {
                 showMessage("Wrong password 3 times. This login ID is locked for 2 hours.");
@@ -495,12 +580,30 @@ public class BankingSystemGUI extends JFrame {
         }
 
         user.recordSuccessfulLogin();
+        saveBankData();
         clearPasswords(password);
         currentUser = user;
         currentAccount = user.getAccount();
         clearLoginFields();
         updateDashboard();
         showDashboardScreen();
+    }
+
+    private String generateAccountNumber() {
+        if (nextAccountSerial > ACCOUNT_BLOCK_SIZE * 10L) {
+            throw new IllegalStateException("All supported AS Bank account numbers are used.");
+        }
+
+        long serial = nextAccountSerial;
+        nextAccountSerial++;
+
+        if (serial <= ACCOUNT_BLOCK_SIZE) {
+            return "AS" + String.format("%09d", serial);
+        }
+
+        long blockNumber = (serial - 1) / ACCOUNT_BLOCK_SIZE;
+        long code = ((serial - 1) % ACCOUNT_BLOCK_SIZE) + 1;
+        return "AS" + blockNumber + String.format("%09d", code);
     }
 
     private void deposit() {
@@ -510,6 +613,7 @@ public class BankingSystemGUI extends JFrame {
         }
 
         outputArea.setText(currentAccount.deposit(amount));
+        saveBankData();
         updateDashboard();
     }
 
@@ -520,12 +624,19 @@ public class BankingSystemGUI extends JFrame {
         }
 
         outputArea.setText(currentAccount.withdraw(amount));
+        saveBankData();
         updateDashboard();
     }
 
     private void showBalance() {
         updateDashboard();
-        outputArea.setText("Available balance: Rs. " + currentAccount.formatAmount(currentAccount.getBalance()));
+        outputArea.setText(
+                "Account Holder: " + currentAccount.getAccountHolderName()
+                        + "\nPhone: " + currentAccount.getPhoneNumber()
+                        + "\nEmail: " + currentAccount.getEmailAddress()
+                        + "\nAccount Number: " + currentAccount.getAccountNumber()
+                        + "\nAvailable balance: Rs. " + currentAccount.formatAmount(currentAccount.getBalance())
+        );
     }
 
     private void showHistory() {
@@ -542,11 +653,17 @@ public class BankingSystemGUI extends JFrame {
 
     private void updateDashboard() {
         userInfoLabel.setText(
-                currentAccount.getAccountHolderName()
+                "<html>"
+                        + currentAccount.getAccountHolderName()
                         + " | Account No: "
                         + currentAccount.getAccountNumber()
+                        + "<br>Phone: "
+                        + currentAccount.getPhoneNumber()
+                        + " | Email: "
+                        + currentAccount.getEmailAddress()
                         + " | Login ID: "
                         + currentUser.getLoginId()
+                        + "</html>"
         );
         balanceLabel.setText("Balance: Rs. " + currentAccount.formatAmount(currentAccount.getBalance()));
     }
@@ -638,6 +755,58 @@ public class BankingSystemGUI extends JFrame {
         return button;
     }
 
+    private JButton createSidebarButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setBackground(new Color(35, 48, 64));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setPreferredSize(new Dimension(180, 42));
+        return button;
+    }
+
+    private void buildSidebar() {
+        sidebarPanel.removeAll();
+        sidebarPanel.setPreferredSize(new Dimension(sidebarExpanded ? 210 : 72, 420));
+
+        sidebarToggleButton.setText(sidebarExpanded ? "Hide Menu" : "Menu");
+        depositButton.setText(sidebarExpanded ? "Deposit" : "D");
+        withdrawButton.setText(sidebarExpanded ? "Withdraw" : "W");
+        balanceButton.setText(sidebarExpanded ? "Balance Enquiry" : "B");
+        historyButton.setText(sidebarExpanded ? "Transaction History" : "H");
+
+        Dimension buttonSize = new Dimension(sidebarExpanded ? 180 : 48, 42);
+        sidebarToggleButton.setPreferredSize(buttonSize);
+        depositButton.setPreferredSize(buttonSize);
+        withdrawButton.setPreferredSize(buttonSize);
+        balanceButton.setPreferredSize(buttonSize);
+        historyButton.setPreferredSize(buttonSize);
+
+        addSidebarButton(sidebarToggleButton, 0);
+        addSidebarButton(depositButton, 1);
+        addSidebarButton(withdrawButton, 2);
+        addSidebarButton(balanceButton, 3);
+        addSidebarButton(historyButton, 4);
+        sidebarPanel.revalidate();
+        sidebarPanel.repaint();
+    }
+
+    private void addSidebarButton(JButton button, int row) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.insets = new Insets(6, 0, 6, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        sidebarPanel.add(button, gbc);
+    }
+
+    private void toggleSidebar() {
+        sidebarExpanded = !sidebarExpanded;
+        buildSidebar();
+    }
+
     private GridBagConstraints createGbc() {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 8, 8, 8);
@@ -675,7 +844,8 @@ public class BankingSystemGUI extends JFrame {
 
     private void clearCreateFields() {
         createNameField.setText("");
-        createAccountNumberField.setText("");
+        createPhoneField.setText("");
+        createEmailField.setText("");
         createLoginIdField.setText("");
         createPasswordField.setText("");
         confirmPasswordField.setText("");
@@ -704,3 +874,5 @@ public class BankingSystemGUI extends JFrame {
         });
     }
 }
+
+
